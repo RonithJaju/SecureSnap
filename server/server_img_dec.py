@@ -161,8 +161,7 @@ def receive_image():
     client_socket, client_address = server_socket.accept()
     print("Connected to", client_address)
 
-    # DIFFIE HELLMANN
-    # l = []
+    # DIFFIE HELLMANN for HENON
 
     while True:
         P1 = int(input("Enter P (prime): "))
@@ -197,6 +196,38 @@ def receive_image():
 
     scaled_secret_1 = k1 / P1
 
+    # DIFFIE HELLMANN for HMAC
+
+    while True:
+        P2 = int(input("Enter P (prime): "))
+        if not prime_checker(P2):
+            print("Number is not prime, please enter again!")
+            continue
+        break
+
+    while True:
+        G2 = int(input(f"Enter the primitive root of {P2}: "))
+        #if not primitive_check(G, P, l):
+        if not primitive_check(G2, P2):
+            print(f"Number is not a primitive root of {P2}, please try again!")
+            continue
+        break
+
+    x1 = int(input("Enter the private key of User 1: "))
+    y1 = generate_public_key(G2, x1, P2)
+
+    client_socket.sendall(str(P2).encode())
+    client_socket.recv(1024)  # Acknowledge
+
+    client_socket.sendall(str(G2).encode())
+    client_socket.recv(1024)  # Acknowledge
+
+    client_socket.sendall(str(y1).encode())
+
+    y2 = int(client_socket.recv(1024).decode())
+
+    k2 = generate_secret_key(y2, x1, P2)
+    print(f"\nSecret Key for User 1 is {k2}\n")
 
     #HENON
     #image = r"D:\crypto paper\crypto paper\orig"
@@ -220,35 +251,37 @@ def receive_image():
 
         frame_data = data[:msg_size]
         data = data[msg_size:]
-
+        
         #Client
+        key_hmac = str(k2)
         hmac_hash = client_socket.recv(256)
-        message_digest2 = hmac.digest("10".encode(), msg=bytes(data, encoding="utf-8"), digest="sha3_256")
+        message_digest2 = hmac.digest(key_hmac.encode(), msg=frame_data, digest="sha3_256")
         print("Message Digest 2 : {}".format(message_digest2.hex()))
 
         #Authentication
         print("\nIs message digest 1 is equal to message digest 2? : {}".format(hmac.compare_digest(hmac_hash, message_digest2)))
 
+        if (hmac.compare_digest(hmac_hash, message_digest2)):
+            frame = pickle.loads(frame_data)
+            cv2.imshow("Received Henon-Encrypted Image", frame)
 
-        frame = pickle.loads(frame_data)
-        cv2.imshow("Received Henon-Encrypted Image", frame)
+            received_image_path = "received_HenonEnc.png" 
+            cv2.imwrite(received_image_path, frame)
+            #print(f"Received image saved at: {received_image_path}")
 
-        received_image_path = "received_HenonEnc.png" 
-        cv2.imwrite(received_image_path, frame)
-        #print(f"Received image saved at: {received_image_path}")
+            #cv2.waitKey(0)  # Wait until a key is pressed to close the window
 
-        #cv2.waitKey(0)  # Wait until a key is pressed to close the window
-
-        #decrypt the image
-        #HenonDecryption(r"C:\Users\ronit\projects\crypto paper\server\\" + received_image_path, key)
-        HenonDecryption(received_image_path, key)
-        # Display the decrypted image
-        im = Image.open("received_HenonDec.png", 'r')
-        #im = Image.open("D:\crypto paper\crypto paper\orig_HenonDec.png", 'r')
-        imshow(np.asarray(im))
-        plt.title('Henon-Decrypted Image', fontsize=20)
-        plt.show()
-
+            #decrypt the image
+            #HenonDecryption(r"C:\Users\ronit\projects\crypto paper\server\\" + received_image_path, key)
+            HenonDecryption(received_image_path, key)
+            # Display the decrypted image
+            im = Image.open("received_HenonDec.png", 'r')
+            #im = Image.open("D:\crypto paper\crypto paper\orig_HenonDec.png", 'r')
+            imshow(np.asarray(im))
+            plt.title('Henon-Decrypted Image', fontsize=20)
+            plt.show()
+        else:
+            print("Authentication failed. Data integrity compromised.")
         break
 
     server_socket.close()

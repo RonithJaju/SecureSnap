@@ -126,7 +126,7 @@ def send_image():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect(('127.0.0.1', 12345))
 
-    #DIFFIE HELLMANN
+    #DIFFIE HELLMANN for HENON MAP
     P1 = int(client_socket.recv(1024).decode())
     client_socket.sendall(b"Ack")  # Acknowledge
 
@@ -144,6 +144,21 @@ def send_image():
 
     scaled_secret_1 = k1 / P1
 
+    #DIFFIE HELLMANN for HMAC
+    P2 = int(client_socket.recv(1024).decode())
+    client_socket.sendall(b"Ack")  # Acknowledge
+
+    G2 = int(client_socket.recv(1024).decode())
+    client_socket.sendall(b"Ack")  # Acknowledge
+
+    y2 = int(client_socket.recv(1024).decode())
+    x2 = int(input("Enter the private key of User 2: "))
+    y1 = generate_public_key(G2, x2, P2)
+
+    client_socket.sendall(str(y1).encode())
+
+    k2 = generate_secret_key(y2, x2, P2)
+    print(f"\nSecret Key for User 2 is {k2}\n")
 
     # HENON
     #image_path = r"C:\Users\ronit\projects\crypto paper\client\orig.png"
@@ -168,9 +183,11 @@ def send_image():
 
     # Send the serialized frame
     client_socket.sendall(data)
-    time.sleep(0.1)
+    
     #hmac
-    message_digest1 = hmac.digest("10".encode(), msg=data.encode(), digest="sha3_256")
+    time.sleep(0.1)
+    key = str(k2)
+    message_digest1 = hmac.digest(key.encode(), msg=data, digest="sha3_256")
     print("Message Digest 1 : {}".format(message_digest1.hex()))
 
     #Send the hmac
