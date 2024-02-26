@@ -1,18 +1,13 @@
 from PIL import Image
 import numpy as np
-#import os
 from matplotlib.pyplot import imshow
-#import matplotlib.pyplot as plt
 import cv2
-#import random
 from math import log
-#from google.colab.patches import cv2_imshow
-#from tqdm import tqdm
 import hmac
-
 import socket
 import struct
 import pickle
+import time
 
 #HMAC
 def generate_hmac(key, data):
@@ -132,29 +127,30 @@ def send_image():
     client_socket.connect(('127.0.0.1', 12345))
 
     #DIFFIE HELLMANN
-    P = int(client_socket.recv(1024).decode())
+    P1 = int(client_socket.recv(1024).decode())
     client_socket.sendall(b"Ack")  # Acknowledge
 
-    G = int(client_socket.recv(1024).decode())
+    G1 = int(client_socket.recv(1024).decode())
     client_socket.sendall(b"Ack")  # Acknowledge
 
     y2 = int(client_socket.recv(1024).decode())
     x2 = int(input("Enter the private key of User 2: "))
-    y1 = generate_public_key(G, x2, P)
+    y1 = generate_public_key(G1, x2, P1)
 
     client_socket.sendall(str(y1).encode())
 
-    k2 = generate_secret_key(y2, x2, P)
-    print(f"\nSecret Key for User 2 is {k2}\n")
+    k1 = generate_secret_key(y2, x2, P1)
+    print(f"\nSecret Key for User 2 is {k1}\n")
 
-    scaled_secret = k2 / P
+    scaled_secret_1 = k1 / P1
+
 
     # HENON
     #image_path = r"C:\Users\ronit\projects\crypto paper\client\orig.png"
     #image_path = r"D:\crypto paper\crypto paper\client\client_img_enc.py"
     #key = (0.1, 0.1)
     image_path=r"orig.png"
-    key = (scaled_secret, scaled_secret)
+    key = (scaled_secret_1, scaled_secret_1)
 
     # Read and encrypt the image
     HenonEncryption(image_path, key)
@@ -172,6 +168,13 @@ def send_image():
 
     # Send the serialized frame
     client_socket.sendall(data)
+    time.sleep(0.1)
+    #hmac
+    message_digest1 = hmac.digest("10".encode(), msg=data.encode(), digest="sha3_256")
+    print("Message Digest 1 : {}".format(message_digest1.hex()))
+
+    #Send the hmac
+    client_socket.sendall(message_digest1)
 
     client_socket.close()
 

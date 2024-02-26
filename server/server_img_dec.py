@@ -1,10 +1,8 @@
 from PIL import Image
 import numpy as np
-#import os
 from matplotlib.pyplot import imshow
 import matplotlib.pyplot as plt
 import cv2
-#import random
 from math import log
 import socket
 import struct
@@ -167,43 +165,44 @@ def receive_image():
     # l = []
 
     while True:
-        P = int(input("Enter P (prime): "))
-        if not prime_checker(P):
+        P1 = int(input("Enter P (prime): "))
+        if not prime_checker(P1):
             print("Number is not prime, please enter again!")
             continue
         break
 
     while True:
-        G = int(input(f"Enter the primitive root of {P}: "))
+        G1 = int(input(f"Enter the primitive root of {P1}: "))
         #if not primitive_check(G, P, l):
-        if not primitive_check(G, P):
-            print(f"Number is not a primitive root of {P}, please try again!")
+        if not primitive_check(G1, P1):
+            print(f"Number is not a primitive root of {P1}, please try again!")
             continue
         break
 
     x1 = int(input("Enter the private key of User 1: "))
-    y1 = generate_public_key(G, x1, P)
+    y1 = generate_public_key(G1, x1, P1)
 
-    client_socket.sendall(str(P).encode())
+    client_socket.sendall(str(P1).encode())
     client_socket.recv(1024)  # Acknowledge
 
-    client_socket.sendall(str(G).encode())
+    client_socket.sendall(str(G1).encode())
     client_socket.recv(1024)  # Acknowledge
 
     client_socket.sendall(str(y1).encode())
 
     y2 = int(client_socket.recv(1024).decode())
 
-    k1 = generate_secret_key(y2, x1, P)
+    k1 = generate_secret_key(y2, x1, P1)
     print(f"\nSecret Key for User 1 is {k1}\n")
 
-    scaled_secret = k1 / P
+    scaled_secret_1 = k1 / P1
+
 
     #HENON
     #image = r"D:\crypto paper\crypto paper\orig"
     #ext = ".png"
     #key = (0.1, 0.1)
-    key = (scaled_secret, scaled_secret)
+    key = (scaled_secret_1, scaled_secret_1)
 
     data = b""
     payload_size = struct.calcsize(">L")
@@ -221,6 +220,15 @@ def receive_image():
 
         frame_data = data[:msg_size]
         data = data[msg_size:]
+
+        #Client
+        hmac_hash = client_socket.recv(256)
+        message_digest2 = hmac.digest("10".encode(), msg=bytes(data, encoding="utf-8"), digest="sha3_256")
+        print("Message Digest 2 : {}".format(message_digest2.hex()))
+
+        #Authentication
+        print("\nIs message digest 1 is equal to message digest 2? : {}".format(hmac.compare_digest(hmac_hash, message_digest2)))
+
 
         frame = pickle.loads(frame_data)
         cv2.imshow("Received Henon-Encrypted Image", frame)
