@@ -8,7 +8,7 @@ import socket
 import struct
 import pickle
 import hmac
-
+import os
 #HMAC
 def generate_hmac(key, data):
     h = hmac.new(key, data, "sha3_256")
@@ -26,16 +26,6 @@ def prime_checker(p):
             if p % i == 0:
                 return False
         return True
-
-'''def primitive_check(g, p, L):
-    # Checks if the entered number is a Primitive Root or not
-    for i in range(1, p):
-        L.append(pow(g, i) % p)
-    for i in range(1, p):
-        if L.count(i) > 1:
-            L.clear()
-            return False
-    return True'''
 
 def primitive_check(g, p):
     seen = set()
@@ -229,10 +219,6 @@ def receive_image():
     k2 = generate_secret_key(y2, x1, P2)
     print(f"\nSecret Key for User 1 is {k2}\n")
 
-    #HENON
-    #image = r"D:\crypto paper\crypto paper\orig"
-    #ext = ".png"
-    #key = (0.1, 0.1)
     key = (scaled_secret_1, scaled_secret_1)
 
     data = b""
@@ -267,19 +253,26 @@ def receive_image():
 
             received_image_path = "received_HenonEnc.png" 
             cv2.imwrite(received_image_path, frame)
-            #print(f"Received image saved at: {received_image_path}")
-
             #cv2.waitKey(0)  # Wait until a key is pressed to close the window
 
             #decrypt the image
-            #HenonDecryption(r"C:\Users\ronit\projects\crypto paper\server\\" + received_image_path, key)
             HenonDecryption(received_image_path, key)
+
             # Display the decrypted image
             im = Image.open("received_HenonDec.png", 'r')
-            #im = Image.open("D:\crypto paper\crypto paper\orig_HenonDec.png", 'r')
             imshow(np.asarray(im))
             plt.title('Henon-Decrypted Image', fontsize=20)
             plt.show()
+
+            #del the received enc image
+            try:
+                os.remove(received_image_path)
+                print(f"File {received_image_path} deleted successfully.")
+            except FileNotFoundError:
+                print(f"File {received_image_path} not found.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
         else:
             print("Authentication failed. Data integrity compromised.")
         break

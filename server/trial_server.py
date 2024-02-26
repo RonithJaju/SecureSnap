@@ -1,15 +1,14 @@
 from PIL import Image
 import numpy as np
-#import os
 from matplotlib.pyplot import imshow
 import matplotlib.pyplot as plt
 import cv2
-#import random
 from math import log
 import socket
 import struct
 import pickle
 import hmac
+import os
 
 #HMAC
 def generate_hmac(key, data):
@@ -28,7 +27,6 @@ def prime_checker(p):
             if p % i == 0:
                 return False
         return True
-
 
 def primitive_check(g, p):
     seen = set()
@@ -56,17 +54,17 @@ def dec(bitSequence):
     return decimal
 
 def getImageMatrix(imageName):
-    im = Image.open(imageName)
+    im = Image.open(imageName) 
     pix = im.load()
     color = 1
-    if type(pix[0, 0]) == int:
+    if type(pix[0,0]) == int:
         color = 0
-    image_size = im.size
+    image_size = im.size 
     image_matrix = []
     for width in range(int(image_size[0])):
         row = []
         for height in range(int(image_size[1])):
-            row.append(pix[width, height])
+                row.append((pix[width,height]))
         image_matrix.append(row)
     return image_matrix, image_size[0], image_size[1], color
 
@@ -74,9 +72,9 @@ def genHenonMap(dimensionX, dimensionY, key):
     x = key[0]
     y = key[1]
     sequenceSize = dimensionX * dimensionY * 8  # Total Number of bitSequence produced
-    bitSequence = []  # Each bitSequence contains 8 bits
-    byteArray = []  # Each byteArray contains m (i.e 512 in this case) bitSequence
-    TImageMatrix = []  # Each TImageMatrix contains m*n byteArray (i.e 512 byteArray in this case)
+    bitSequence = []    # Each bitSequence contains 8 bits
+    byteArray = []      # Each byteArray contains m( i.e 512 in this case) bitSequence
+    TImageMatrix = []   # Each TImageMatrix contains m*n byteArray( i.e 512 byteArray in this case)
     for i in range(sequenceSize):
         xN = y + 1 - 1.4 * x**2
         yN = 0.3 * x
@@ -102,8 +100,8 @@ def genHenonMap(dimensionX, dimensionY, key):
                 byteArray = [decimal]
             bitSequence = []
 
-        byteArraySize = dimensionX * 8
-        if i % byteArraySize == byteArraySize - 1:
+        byteArraySize = dimensionY * 8
+        if i % byteArraySize == byteArraySize-1:
             try:
                 TImageMatrix.append(byteArray)
             except:
@@ -111,37 +109,39 @@ def genHenonMap(dimensionX, dimensionY, key):
             byteArray = []
     return TImageMatrix
 
-def HenonDecryption(imageMatrixEnc, key):
-    dimensionX, dimensionY, color = len(imageMatrixEnc), len(imageMatrixEnc[0]), True
+def HenonDecryption(imageNameEnc, key):
+    imageMatrix, dimensionX, dimensionY, color = getImageMatrix(imageNameEnc)
     transformationMatrix = genHenonMap(dimensionX, dimensionY, key)
+    pil_im = Image.open(imageNameEnc, 'r')
+    imshow(np.asarray(pil_im))
     henonDecryptedImage = []
     for i in range(dimensionX):
         row = []
         for j in range(dimensionY):
             try:
                 if color:
-                    row.append(tuple([transformationMatrix[i][j] ^ x for x in imageMatrixEnc[i][j]]))
+                    row.append(tuple([transformationMatrix[i][j] ^ x for x in imageMatrix[i][j]]))
                 else:
-                    row.append(transformationMatrix[i][j] ^ imageMatrixEnc[i][j])
+                    row.append(transformationMatrix[i][j] ^ imageMatrix[i][j])
             except:
                 if color:
-                    row = [tuple([transformationMatrix[i][j] ^ x for x in imageMatrixEnc[i][j]])]
-                else:
-                    row = [transformationMatrix[i][j] ^ x for x in imageMatrixEnc[i][j]]
+                    row = [tuple([transformationMatrix[i][j] ^ x for x in imageMatrix[i][j]])]
+                else :
+                    row = [transformationMatrix[i][j] ^ x for x in imageMatrix[i][j]]
         try:
             henonDecryptedImage.append(row)
         except:
             henonDecryptedImage = [row]
     if color:
         im = Image.new("RGB", (dimensionX, dimensionY))
-    else:
+    else: 
         im = Image.new("L", (dimensionX, dimensionY))  # L is for Black and white pixels
 
     pix = im.load()
     for x in range(dimensionX):
         for y in range(dimensionY):
             pix[x, y] = henonDecryptedImage[x][y]
-    return im
+    im.save(imageNameEnc.split('_')[0] + "_HenonDec.png", "PNG")
 
 def receive_image():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -152,36 +152,82 @@ def receive_image():
     client_socket, client_address = server_socket.accept()
     print("Connected to", client_address)
 
-    # DIFFIE HELLMANN
-    P = int(input("Enter P (prime): "))
-    while not prime_checker(P):
-        print("Number is not prime, please enter again!")
-        P = int(input("Enter P (prime): "))
+    # DIFFIE HELLMANN for HENON
 
-    G = int(input(f"Enter the primitive root of {P}: "))
-    while not primitive_check(G, P):
-        print(f"Number is not a primitive root of {P}, please try again!")
-        G = int(input(f"Enter the primitive root of {P}: "))
+    while True:
+        #P1 = int(input("Enter P (prime): "))
+        P1=17
+        if not prime_checker(P1):
+            print("Number is not prime, please enter again!")
+            continue
+        break
 
-    x1 = int(input("Enter the private key of User 1: "))
-    y1 = generate_public_key(G, x1, P)
+    while True:
+        #G1 = int(input(f"Enter the primitive root of {P1}: "))
+        G1=3
+        #if not primitive_check(G, P, l):
+        if not primitive_check(G1, P1):
+            print(f"Number is not a primitive root of {P1}, please try again!")
+            continue
+        break
 
-    client_socket.sendall(str(P).encode())
+    #x1 = int(input("Enter the private key of User 1: "))
+    x1=15
+    y1 = generate_public_key(G1, x1, P1)
+
+    client_socket.sendall(str(P1).encode())
     client_socket.recv(1024)  # Acknowledge
 
-    client_socket.sendall(str(G).encode())
+    client_socket.sendall(str(G1).encode())
     client_socket.recv(1024)  # Acknowledge
 
     client_socket.sendall(str(y1).encode())
 
     y2 = int(client_socket.recv(1024).decode())
 
-    k1 = generate_secret_key(y2, x1, P)
+    k1 = generate_secret_key(y2, x1, P1)
     print(f"\nSecret Key for User 1 is {k1}\n")
 
-    scaled_secret = k1 / P
+    scaled_secret_1 = k1 / P1
 
-    key = (scaled_secret, scaled_secret)
+    # DIFFIE HELLMANN for HMAC
+
+    while True:
+        #P2 = int(input("Enter P (prime): "))
+        P2 = 10301
+        if not prime_checker(P2):
+            print("Number is not prime, please enter again!")
+            continue
+        break
+
+    while True:
+        #G2 = int(input(f"Enter the primitive root of {P2}: "))
+        G2=10299
+        if not primitive_check(G2, P2):
+            print(f"Number is not a primitive root of {P2}, please try again!")
+            continue
+        break
+
+    #x1 = int(input("Enter the private key of User 1: "))
+    x1=188
+    y1 = generate_public_key(G2, x1, P2)
+
+    client_socket.sendall(str(P2).encode())
+    client_socket.recv(1024)  # Acknowledge
+
+    client_socket.sendall(str(G2).encode())
+    client_socket.recv(1024)  # Acknowledge
+
+    client_socket.sendall(str(y1).encode())
+
+    y2 = int(client_socket.recv(1024).decode())
+
+    k2 = generate_secret_key(y2, x1, P2)
+    print(f"\nSecret Key for User 1 is {k2}\n")
+
+    # HENON
+
+    key = (scaled_secret_1, scaled_secret_1)
 
     data = b""
     payload_size = struct.calcsize(">L")
@@ -199,24 +245,47 @@ def receive_image():
 
         frame_data = data[:msg_size]
         data = data[msg_size:]
+        
+        #Client
+        key_hmac = str(k2)
+        hmac_hash = client_socket.recv(256)
+        message_digest2 = hmac.digest(key_hmac.encode(), msg=frame_data, digest="sha3_256")
+        print("Message Digest 2 : {}".format(message_digest2.hex()))
 
-        frame = pickle.loads(frame_data)
-        cv2.imshow("Received Henon-Encrypted Image", frame)
+        #Authentication
+        print("\nIs message digest 1 is equal to message digest 2? : {}".format(hmac.compare_digest(hmac_hash, message_digest2)))
 
-        # Decrypt the image
-        decrypted_image = HenonDecryption(frame, key)
+        if (hmac.compare_digest(hmac_hash, message_digest2)):
+            frame = pickle.loads(frame_data)
+            cv2.imshow("Received Henon-Encrypted Image", frame)
 
-        # Display the decrypted image
-        im_arr = np.array(decrypted_image)
-        if im_arr.ndim == 3:  # Check if it's a color image
-            im_arr = cv2.cvtColor(im_arr, cv2.COLOR_RGB2BGR)
-        cv2.imshow("Henon-Decrypted Image", im_arr)
-        cv2.waitKey(0)  # Wait until a key is pressed to close the window
+            received_image_path = "received_HenonEnc.png" 
+            cv2.imwrite(received_image_path, frame)
+            #cv2.waitKey(0)  # Wait until a key is pressed to close the window
 
+            #decrypt the image
+            HenonDecryption(received_image_path, key)
+
+            # Display the decrypted image
+            im = Image.open("received_HenonDec.png", 'r')
+            imshow(np.asarray(im))
+            plt.title('Henon-Decrypted Image', fontsize=20)
+            plt.show()
+
+            #del the received enc image
+            try:
+                os.remove(received_image_path)
+                print(f"File {received_image_path} deleted successfully.")
+            except FileNotFoundError:
+                print(f"File {received_image_path} not found.")
+            except Exception as e:
+                print(f"An error occurred: {e}")
+
+        else:
+            print("Authentication failed. Data integrity compromised.")
         break
 
     server_socket.close()
 
 if __name__ == "__main__":
     receive_image()
-
