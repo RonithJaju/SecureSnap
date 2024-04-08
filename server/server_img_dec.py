@@ -9,6 +9,7 @@ import struct
 import pickle
 import os
 import sys
+import time
 
 # Adding parent directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +22,10 @@ from modules.henon import HenonDecryption
 from modules.hmac_hash import *
 
 def receive_image():
-    
+
+    if not os.path.exists('decrypted'):
+        os.makedirs('decrypted')
+
     # Socket connection
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('127.0.0.1', 12345))
@@ -39,12 +43,14 @@ def receive_image():
     # Diffie Hellman Key Exchange for HMAC
     # print("HMAC Key:")
     k2, P2 = diffie_hellman_server(client_socket)
-
     
-    data = b""
     payload_size = struct.calcsize(">L")
 
     while True:
+
+        data = b""
+        # Receive filename and extension
+        filename, extension = pickle.loads(client_socket.recv(4096))
         
         # Recieve Encrypted Image
         while len(data) < payload_size:
@@ -53,13 +59,13 @@ def receive_image():
         packed_msg_size = data[:payload_size]
         data = data[payload_size:]
         msg_size = struct.unpack(">L", packed_msg_size)[0]
-
+        
         while len(data) < msg_size:
             data += client_socket.recv(4096)
 
         frame_data = data[:msg_size]
         data = data[msg_size:]
-        
+
         # HMAC Generation and Authentication
         hmac_key = str(k2)
         computed_hmac_hash = generate_hmac(hmac_key, frame_data)
@@ -68,11 +74,9 @@ def receive_image():
 
         # Authentication successfull, proceed with decryption
         if (isAuthentic):
-           
             # Read and Display the image
             frame = pickle.loads(frame_data)
-            cv2.imshow("Received Henon-Encrypted Image", frame)
-            received_image_path = "received_HenonEnc.png" 
+            received_image_path = f"decrypted\{filename}_HenonEnc{extension}"
             cv2.imwrite(received_image_path, frame)
 
             #Henon Decryption
@@ -87,17 +91,16 @@ def receive_image():
                 print(f"An error occurred: {e}")
 
             # Display the decrypted image
-            im = Image.open("received_HenonDec.png", 'r')
+            im = Image.open(f"decrypted\{filename}_HenonDec{extension}", 'r')
             imshow(np.asarray(im))
-            plt.title('Henon-Decrypted Image', fontsize=20)
+            plt.title(filename + "_HenonDec" + extension, fontsize=20)
             plt.show()
+            print(filename)
 
         # Authentication failed
         else:
             print("Authentication failed. Data integrity compromised.")
-        
-        break
-
+        # break
     server_socket.close()
 
 if __name__ == "__main__":

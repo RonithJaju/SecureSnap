@@ -94,7 +94,7 @@ def HenonEncryption(imageName, key):
     for x in range(dimensionX):
         for y in range(dimensionY):
             pix[x, y] = resultantMatrix[x][y]
-    im.save(imageName.split('.')[0] + "_HenonEnc.png", "PNG")
+    im.save(imageName.split('.')[0] + "_HenonEnc." + imageName.split('.')[1])
 
 def HenonDecryption(imageNameEnc, key):
     imageMatrix, dimensionX, dimensionY, color = getImageMatrix(imageNameEnc)
@@ -128,4 +128,4 @@ def HenonDecryption(imageNameEnc, key):
     for x in range(dimensionX):
         for y in range(dimensionY):
             pix[x, y] = henonDecryptedImage[x][y]
-    im.save(imageNameEnc.split('_')[0] + "_HenonDec.png", "PNG")
+    im.save(imageNameEnc.split('_HenonEnc')[0]+ "_HenonDec."+imageNameEnc.split('.')[1])

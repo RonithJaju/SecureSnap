@@ -6,6 +6,7 @@ import pickle
 import time
 import os
 import sys
+import zipfile
 
 # Adding parent directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +26,7 @@ def send_image():
     # Diffie Hellman Key Exchange for Henon Map
     k1, P1 = diffie_hellman_client(client_socket)
     scaled_secret = k1 / P1
+    henon_key = (scaled_secret, scaled_secret)
 
     # Diffie Hellman Key Exchange for HMAC
     k2, P2 = diffie_hellman_client(client_socket)
@@ -32,20 +34,28 @@ def send_image():
     # Key space and Brute force time
     calculate_brute_force_time()
 
+
     # Henon encryption
-    image_path=r"orig.png"
-    henon_key = (scaled_secret, scaled_secret)
+    image_path=r"images\orig.png"
+    filename, extension = os.path.splitext(image_path)
+
+
     HenonEncryption(image_path, henon_key)
-    image_path_new = image_path.split('.')[0] + "_HenonEnc.png"
+
+    image_path_new = filename + "_HenonEnc"+extension
     image_enc = cv2.imread(image_path_new)
+
+    # Send filename and extension
+    client_socket.sendall(pickle.dumps((filename.split('\\')[-1], extension)))
 
     # Send encrypted image to server
     data = pickle.dumps(image_enc)
     size = struct.pack(">L", len(data))
     client_socket.sendall(size) # Send the frame size
     client_socket.sendall(data) # Send the serialized frame
+
     
-    #Delete the encrypted image
+    # Delete the encrypted image
     try:
         os.remove(image_path_new)
         #print(f"File {image_path_new} deleted successfully.")
