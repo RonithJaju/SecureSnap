@@ -13,24 +13,24 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 # Importing custom modules
-from modules.diffie_hellman import diffie_hellman_client
+from modules.diffie_hellman import diffie_hellman_client, calculate_brute_force_time
 from modules.henon import HenonEncryption
 from modules.hmac_hash import generate_hmac
 
 def send_image():
-    
     # Socket connection
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect(('127.0.0.1', 12345))
 
     # Diffie Hellman Key Exchange for Henon Map
-    print("Henon Map Key:")
     k1, P1 = diffie_hellman_client(client_socket)
     scaled_secret = k1 / P1
 
     # Diffie Hellman Key Exchange for HMAC
-    print("HMAC Key:")
     k2, P2 = diffie_hellman_client(client_socket)
+
+    # Key space and Brute force time
+    calculate_brute_force_time()
 
     # Henon encryption
     image_path=r"orig.png"

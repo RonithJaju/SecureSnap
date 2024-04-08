@@ -32,12 +32,12 @@ def receive_image():
 
 
     # Diffie Hellman Key Exchange for Henon Map
-    print("\nHenon Map Key:")
+    # print("\nHenon Map Key:")
     k1, P1 = diffie_hellman_server(client_socket)
     scaled_secret = k1 / P1
     
     # Diffie Hellman Key Exchange for HMAC
-    print("HMAC Key:")
+    # print("HMAC Key:")
     k2, P2 = diffie_hellman_server(client_socket)
 
     
